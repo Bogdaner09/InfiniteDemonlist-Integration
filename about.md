@@ -1,1 +1,1 @@
-Heil the IDL. Glory to the best demonlist.
+IDL THE BEST IDL NUMBER ONE
