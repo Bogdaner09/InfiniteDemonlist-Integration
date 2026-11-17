@@ -9,6 +9,66 @@
 
 using namespace geode::prelude;
 
+namespace {
+
+constexpr float kRankScale = .4f;
+// goldFont's digits, in points at scale 1: their box runs from the label's
+// bottom edge up this far (83 of the font's 104-pixel line, at 4x).
+constexpr float kGoldDigitHeight = 83.f / 4.f;
+
+// GD's goldFont (and bigFont) draw "NO" where "#" should be, so the "#" is
+// drawn by hand to match: gold strokes with a dark outline.
+CCNode* hashSign(float height) {
+    float const width = height * .85f;
+    float const stroke = height * .085f;
+    float const outline = stroke + .5f;
+    float const lean = width * .14f;
+
+    std::array<std::pair<CCPoint, CCPoint>, 4> const strokes = {{
+        { { width * .32f - lean, 0.f }, { width * .32f + lean, height } },
+        { { width * .70f - lean, 0.f }, { width * .70f + lean, height } },
+        { { 0.f, height * .34f }, { width, height * .34f } },
+        { { 0.f, height * .68f }, { width, height * .68f } },
+    }};
+
+    auto node = CCDrawNode::create();
+    // All the outlines first, so no outline crosses over another stroke's gold.
+    for (auto const& [from, to] : strokes) node->drawSegment(from, to, outline, { .16f, .08f, 0.f, 1.f });
+    for (auto const& [from, to] : strokes) node->drawSegment(from, to, stroke, { 1.f, .8f, .2f, 1.f });
+    node->setContentSize({ width, height });
+    return node;
+}
+
+// The list placement for a cell's bottom-right corner, with its right edge at
+// `right` and its bottom at `bottom`. goldFont's outline keeps it readable
+// over bright thumbnails, where the thin, faded chatFont disappeared.
+CCNode* rankLabel(idl::Level const& level, float right, float bottom) {
+    auto node = CCNode::create();
+
+    // Upcoming (unverified) levels aren't ranked yet.
+    auto text = CCLabelBMFont::create(
+        level.verified ? fmt::format("{} IDL", level.rank).c_str() : "Upcoming", "goldFont.fnt"
+    );
+    text->setScale(kRankScale);
+    text->setAnchorPoint({ 1.f, 0.f });
+    text->setPosition({ right, bottom });
+    node->addChild(text);
+
+    if (level.verified) {
+        float const digitHeight = kGoldDigitHeight * kRankScale;
+        auto hash = hashSign(digitHeight * .78f);
+        auto const hashSize = hash->getContentSize();
+        hash->setPosition({
+            right - text->getScaledContentSize().width - hashSize.width - 1.5f,
+            bottom + (digitHeight - hashSize.height) / 2.f,
+        });
+        node->addChild(hash);
+    }
+    return node;
+}
+
+}
+
 // The demon button on the right side of the online search screen.
 class $modify(IDLSearchLayer, LevelSearchLayer) {
     bool init(int type) {
@@ -69,13 +129,7 @@ class $modify(IDLLevelCell, LevelCell) {
             );
         }
         {
-            // Upcoming (unverified) levels aren't ranked yet.
-            auto const text = entry->verified ? fmt::format("#{} IDL", entry->rank) : std::string("Upcoming");
-            auto rank = CCLabelBMFont::create(text.c_str(), "chatFont.fnt");
-            rank->setAnchorPoint({ 1.f, 0.f });
-            rank->setScale(.6f);
-            rank->setOpacity(170);
-            rank->setPosition({ m_width - 5.f, 3.f });
+            auto rank = rankLabel(*entry, m_width - 5.f, 3.f);
             rank->setID("rank-label"_spr);
             m_mainLayer->addChild(rank, 10);
 
