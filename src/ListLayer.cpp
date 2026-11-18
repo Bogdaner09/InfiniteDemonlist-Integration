@@ -398,10 +398,12 @@ void IDLListLayer::applySearch() {
     auto const& levels = idl::levels();
     for (size_t i = 0; i < levels.size(); i++) {
         auto const& level = levels[i];
-        // A failed lookup stays in the playable list, where the GD search
-        // gets another try at it.
-        bool const unplayable = level.detailLoaded && level.gdLevelId <= 0;
-        if (unplayable != m_unverifiedMode) continue;
+        // Unreleased: not verified yet (verified_at is null), even if it's
+        // already on the GD servers, or not on the servers at all. A failed
+        // lookup of a verified level stays in the main list, where the GD
+        // search gets another try at it.
+        bool const unreleased = !level.verified || (level.detailLoaded && level.gdLevelId <= 0);
+        if (unreleased != m_unverifiedMode) continue;
         if (query.empty()
             || lowercase(level.name).find(query) != std::string::npos
             || lowercase(level.publisher).find(query) != std::string::npos) {
@@ -447,15 +449,10 @@ void IDLListLayer::loadPage() {
     }
 
     this->showMessage("");
-
-    // Nothing to ask the GD servers for; these cells are drawn from the
-    // list's own data.
-    if (m_unverifiedMode) {
-        this->showPage(nullptr);
-        return;
-    }
-
     this->setLoading(true);
+
+    // Unreleased levels that are already on the GD servers get real cells
+    // too; requestGDLevels skips the ones that aren't.
 
     // Normally already known from loadAllDetails; retries any that failed.
     WeakRef<IDLListLayer> weak = this;
