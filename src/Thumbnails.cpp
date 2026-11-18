@@ -280,13 +280,15 @@ void attach(CCNode* parent, CCNode* cell, CCSize const& size, Source const& sour
     float const left = width - thumbWidth;
 
     // A parallelogram with a slanted left edge, like the cell's art is
-    // sliding in from the right.
+    // sliding in from the right. The slant cuts into the picture's own left
+    // edge rather than reaching past it, so the picture can be sized to the
+    // cell's height and show top to bottom without being zoomed in.
     auto stencil = CCDrawNode::create();
     CCPoint corners[4] = {
-        { left - kSlant, bottom },
+        { left, bottom },
         { width, bottom },
         { width, top },
-        { left, top },
+        { left + kSlant, top },
     };
     stencil->drawPolygon(corners, 4, { 1.f, 1.f, 1.f, 1.f }, 0.f, { 0.f, 0.f, 0.f, 0.f }, BorderAlignment::Outside);
 
@@ -304,7 +306,9 @@ void attach(CCNode* parent, CCNode* cell, CCSize const& size, Source const& sour
         auto sprite = CCSprite::createWithTexture(texture, pictureRect(texture));
         auto const spriteSize = sprite->getContentSize();
         if (spriteSize.width <= 0 || spriteSize.height <= 0) return;
-        float const scale = std::max((thumbWidth + kSlant) / spriteSize.width, innerHeight / spriteSize.height);
+        // Full height for 16:9 pictures (all the YouTube ones); anything
+        // narrower is widened just enough to reach the slanted edge.
+        float const scale = std::max(thumbWidth / spriteSize.width, innerHeight / spriteSize.height);
         sprite->setScale(scale);
         sprite->setAnchorPoint({ 1.f, .5f });
         sprite->setPosition({ width, height / 2.f });

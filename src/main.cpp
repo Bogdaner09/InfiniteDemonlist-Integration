@@ -39,31 +39,27 @@ CCNode* hashSign(float height) {
     return node;
 }
 
-// The list placement for a cell's bottom-right corner, with its right edge at
-// `right` and its bottom at `bottom`. goldFont's outline keeps it readable
-// over bright thumbnails, where the thin, faded chatFont disappeared.
+// A verified level's list placement ("#12 IDL") for a cell's bottom-right
+// corner, with its right edge at `right` and its bottom at `bottom`.
+// goldFont's outline keeps it readable over bright thumbnails, where the
+// thin, faded chatFont disappeared.
 CCNode* rankLabel(idl::Level const& level, float right, float bottom) {
     auto node = CCNode::create();
 
-    // Upcoming (unverified) levels aren't ranked yet.
-    auto text = CCLabelBMFont::create(
-        level.verified ? fmt::format("{} IDL", level.rank).c_str() : "Upcoming", "goldFont.fnt"
-    );
+    auto text = CCLabelBMFont::create(fmt::format("{} IDL", level.rank).c_str(), "goldFont.fnt");
     text->setScale(kRankScale);
     text->setAnchorPoint({ 1.f, 0.f });
     text->setPosition({ right, bottom });
     node->addChild(text);
 
-    if (level.verified) {
-        float const digitHeight = kGoldDigitHeight * kRankScale;
-        auto hash = hashSign(digitHeight * .78f);
-        auto const hashSize = hash->getContentSize();
-        hash->setPosition({
-            right - text->getScaledContentSize().width - hashSize.width - 1.5f,
-            bottom + (digitHeight - hashSize.height) / 2.f,
-        });
-        node->addChild(hash);
-    }
+    float const digitHeight = kGoldDigitHeight * kRankScale;
+    auto hash = hashSign(digitHeight * .78f);
+    auto const hashSize = hash->getContentSize();
+    hash->setPosition({
+        right - text->getScaledContentSize().width - hashSize.width - 1.5f,
+        bottom + (digitHeight - hashSize.height) / 2.f,
+    });
+    node->addChild(hash);
     return node;
 }
 
@@ -128,7 +124,9 @@ class $modify(IDLLevelCell, LevelCell) {
                 m_backgroundLayer, this, { m_width, m_height }, idl::thumbnails::sourceFor(*entry)
             );
         }
-        {
+        // Upcoming levels aren't ranked yet, and they're all in their own
+        // list, so they get no corner label at all.
+        if (entry->verified) {
             auto rank = rankLabel(*entry, m_width - 5.f, 3.f);
             rank->setID("rank-label"_spr);
             m_mainLayer->addChild(rank, 10);
@@ -146,8 +144,8 @@ class $modify(IDLLevelCell, LevelCell) {
         }
     }
 
-    // Levels that aren't on the GD servers (unreleased, or still being
-    // verified) can't be opened, so the cell shows their status and video.
+    // Upcoming levels that aren't on the GD servers (or weren't found
+    // there) can't be opened, so the cell shows who's verifying and the video.
     void drawPlaceholder(idl::Level const& entry) {
         // Hide rather than remove: LevelCell keeps pointers to its nodes.
         for (auto child : CCArrayExt<CCNode*>(m_mainLayer->getChildren())) {
@@ -178,30 +176,27 @@ class $modify(IDLLevelCell, LevelCell) {
         author->setPosition({ 53.f, h * .48f });
         root->addChild(author);
 
+        // Everything in the Upcoming list is upcoming, so the line just says
+        // who's verifying it.
         std::string status;
         ccColor3B color { 200, 200, 200 };
         if (entry.gdLevelId > 0) {
             status = "Not found on the servers";
             color = { 255, 120, 120 };
         }
-        else if (entry.progress) {
-            status = entry.verifier.empty()
-                ? fmt::format("Unverified - best {}%", *entry.progress)
-                : fmt::format("Unverified - {}% by {}", *entry.progress, entry.verifier);
-            color = { 255, 190, 90 };
-        }
         else if (!entry.verifier.empty()) {
-            status = fmt::format("Unreleased - verified by {}", entry.verifier);
+            status = entry.verified
+                ? fmt::format("Verified by {}", entry.verifier)
+                : fmt::format("To be verified by {}", entry.verifier);
         }
-        else {
-            status = "Unreleased";
+        if (!status.empty()) {
+            auto statusLabel = CCLabelBMFont::create(status.c_str(), "bigFont.fnt");
+            statusLabel->setAnchorPoint({ 0.f, .5f });
+            statusLabel->limitLabelWidth(200.f, .4f, .1f);
+            statusLabel->setColor(color);
+            statusLabel->setPosition({ 53.f, h * .22f });
+            root->addChild(statusLabel);
         }
-        auto statusLabel = CCLabelBMFont::create(status.c_str(), "bigFont.fnt");
-        statusLabel->setAnchorPoint({ 0.f, .5f });
-        statusLabel->limitLabelWidth(200.f, .4f, .1f);
-        statusLabel->setColor(color);
-        statusLabel->setPosition({ 53.f, h * .22f });
-        root->addChild(statusLabel);
 
         if (!entry.videoId.empty()) {
             auto menu = CCMenu::create();

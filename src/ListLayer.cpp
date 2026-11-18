@@ -53,7 +53,7 @@ CCSprite* squareButton(char const* background, CCNode* top) {
 }
 
 GJGameLevel* makePlaceholder(idl::Level const& entry) {
-    // Unreleased levels aren't on the GD servers, so the cell gets a level
+    // Upcoming levels may not be on the GD servers, so the cell gets a level
     // object of our own; the cell hook draws it differently.
     auto level = GJGameLevel::create();
     level->m_levelName = entry.name;
@@ -193,7 +193,7 @@ bool IDLListLayer::init() {
     m_pageButton->setID("page-button");
     menu->addChild(m_pageButton);
 
-    // The N/A face with "Unreleased" under it switches to the levels you
+    // The N/A face with "Upcoming" under it switches to the levels you
     // can't play yet. Gray when off, full color when on, like the search
     // screen's difficulty filters.
     auto modeNode = CCNode::create();
@@ -201,7 +201,7 @@ bool IDLListLayer::init() {
     // drawn into it.
     m_modeSprite = CCSprite::createWithSpriteFrameName("diffIcon_00_btn_001.png");
     m_modeSprite->setScale(.95f);
-    m_modeLabel = CCLabelBMFont::create("Unreleased", "bigFont.fnt");
+    m_modeLabel = CCLabelBMFont::create("Upcoming", "bigFont.fnt");
     // Narrow enough to stay inside the screen's right edge.
     m_modeLabel->limitLabelWidth(44.f, .3f, .1f);
     auto const faceSize = m_modeSprite->getScaledContentSize();
@@ -236,8 +236,8 @@ bool IDLListLayer::init() {
         "The <cg>search button</c> finds levels by name or publisher (press it again to clear the "
         "search), and the <cl>page button</c> "
         "jumps to any page.\n\n"
-        "The <co>Unreleased</c> button switches to the levels that aren't on the Geometry Dash servers yet: "
-        "unverified and unreleased ones, with their verification progress and a button to their video.",
+        "The <co>Upcoming</c> button switches to the levels that aren't verified or on the Geometry Dash "
+        "servers yet, with who's verifying them and a button to their video.",
         1.f
     );
     infoButton->setPosition({ 25.f, 25.f });
@@ -293,7 +293,7 @@ void IDLListLayer::updateMode() {
     m_modeSprite->setColor(color);
     m_modeLabel->setColor(color);
     if (m_titleLabel) {
-        m_titleLabel->setString(m_unverifiedMode ? "Unreleased Demons" : "Infinite Demonlist");
+        m_titleLabel->setString(m_unverifiedMode ? "Upcoming Demons" : "Infinite Demonlist");
     }
 }
 
@@ -398,12 +398,12 @@ void IDLListLayer::applySearch() {
     auto const& levels = idl::levels();
     for (size_t i = 0; i < levels.size(); i++) {
         auto const& level = levels[i];
-        // Unreleased: not verified yet (verified_at is null), even if it's
+        // Upcoming: not verified yet (verified_at is null), even if it's
         // already on the GD servers, or not on the servers at all. A failed
         // lookup of a verified level stays in the main list, where the GD
         // search gets another try at it.
-        bool const unreleased = !level.verified || (level.detailLoaded && level.gdLevelId <= 0);
-        if (unreleased != m_unverifiedMode) continue;
+        bool const upcoming = !level.verified || (level.detailLoaded && level.gdLevelId <= 0);
+        if (upcoming != m_unverifiedMode) continue;
         if (query.empty()
             || lowercase(level.name).find(query) != std::string::npos
             || lowercase(level.publisher).find(query) != std::string::npos) {
@@ -451,7 +451,7 @@ void IDLListLayer::loadPage() {
     this->showMessage("");
     this->setLoading(true);
 
-    // Unreleased levels that are already on the GD servers get real cells
+    // Upcoming levels that are already on the GD servers get real cells
     // too; requestGDLevels skips the ones that aren't.
 
     // Normally already known from loadAllDetails; retries any that failed.
