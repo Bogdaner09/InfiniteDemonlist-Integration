@@ -38,9 +38,9 @@ constexpr float kFadeTime = .3f;
 // How far the slanted left edge leans, in points.
 constexpr float kSlant = 26.f;
 // Gap between the thumbnail and its cell's top and bottom edges, in points.
-// 0.5 each side leaves a 1-point divider between neighbors, about as wide as
-// GD's own line; 1.5 read as a thick band.
-constexpr float kEdgeInset = .5f;
+// None: sized to the cell's height, the thumbnail fills it edge to edge.
+// (Any gap showed as a line of the cell's blue above and below it.)
+constexpr float kEdgeInset = 0.f;
 // Marks the picture sprites inside a thumbnail, so a sharper one can
 // replace a blurrier one.
 constexpr int kPictureTag = 1;
@@ -270,9 +270,7 @@ void attach(CCNode* parent, CCNode* cell, CCSize const& size, Source const& sour
 
     float const width = size.width;
     float const height = size.height;
-    // Kept clear of the cell's top and bottom edges, where LevelCell draws
-    // its faint divider lines; edge to edge, neighboring thumbnails ran into
-    // each other and the dividers vanished over dark pictures.
+    // kEdgeInset is 0, so this spans the cell's full height.
     float const bottom = kEdgeInset;
     float const top = height - kEdgeInset;
     float const innerHeight = top - bottom;
@@ -280,15 +278,14 @@ void attach(CCNode* parent, CCNode* cell, CCSize const& size, Source const& sour
     float const left = width - thumbWidth;
 
     // A parallelogram with a slanted left edge, like the cell's art is
-    // sliding in from the right. The slant cuts into the picture's own left
-    // edge rather than reaching past it, so the picture can be sized to the
-    // cell's height and show top to bottom without being zoomed in.
+    // sliding in from the right. Its bottom edge reaches kSlant further left
+    // than a 16:9 picture of the cell's height would.
     auto stencil = CCDrawNode::create();
     CCPoint corners[4] = {
-        { left, bottom },
+        { left - kSlant, bottom },
         { width, bottom },
         { width, top },
-        { left + kSlant, top },
+        { left, top },
     };
     stencil->drawPolygon(corners, 4, { 1.f, 1.f, 1.f, 1.f }, 0.f, { 0.f, 0.f, 0.f, 0.f }, BorderAlignment::Outside);
 
@@ -306,10 +303,11 @@ void attach(CCNode* parent, CCNode* cell, CCSize const& size, Source const& sour
         auto sprite = CCSprite::createWithTexture(texture, pictureRect(texture));
         auto const spriteSize = sprite->getContentSize();
         if (spriteSize.width <= 0 || spriteSize.height <= 0) return;
-        // Full height for 16:9 pictures (all the YouTube ones); anything
-        // narrower is widened just enough to reach the slanted edge.
-        float const scale = std::max(thumbWidth / spriteSize.width, innerHeight / spriteSize.height);
-        sprite->setScale(scale);
+        // The whole picture, top to bottom, stretched sideways to reach the
+        // slant's far corner: zooming to fill it instead cut off the top and
+        // bottom.
+        sprite->setScaleY(innerHeight / spriteSize.height);
+        sprite->setScaleX((thumbWidth + kSlant) / spriteSize.width);
         sprite->setAnchorPoint({ 1.f, .5f });
         sprite->setPosition({ width, height / 2.f });
         sprite->setOpacity(0);
